@@ -1,0 +1,144 @@
+name: Release Assets
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-binaries:
+    name: Binary ${{ matrix.goos }}-${{ matrix.asset_arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            asset_arch: x64
+          - goos: linux
+            goarch: arm64
+            asset_arch: arm64
+          - goos: darwin
+            goarch: amd64
+            asset_arch: x64
+          - goos: darwin
+            goarch: arm64
+            asset_arch: arm64
+          - goos: windows
+            goarch: amd64
+            asset_arch: x64
+          - goos: windows
+            goarch: arm64
+            asset_arch: arm64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build packaged binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          asset_name="closde-${{ matrix.goos }}-${{ matrix.asset_arch }}"
+          binary_name="closde"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            binary_name="${binary_name}.exe"
+          fi
+
+          build_dir="dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}"
+          package_dir="${build_dir}/${asset_name}"
+          mkdir -p "${package_dir}"
+
+          export GOOS="${{ matrix.goos }}"
+          export GOARCH="${{ matrix.goarch }}"
+          export CGO_ENABLED=0
+
+          go build -trimpath -ldflags='-s -w' -o "${package_dir}/${binary_name}" .
+          cp README.md "${package_dir}/README.md"
+
+          python3 - <<'PY'
+          import os
+          import zipfile
+
+          build_dir = os.environ['BUILD_DIR']
+          package_dir = os.environ['PACKAGE_DIR']
+          asset_name = os.environ['ASSET_NAME']
+          zip_path = os.path.join(build_dir, f"{asset_name}.zip")
+
+          with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+              for root, _, files in os.walk(package_dir):
+                  for file_name in files:
+                      file_path = os.path.join(root, file_name)
+                      archive.write(file_path, os.path.relpath(file_path, package_dir))
+          PY
+        env:
+          ASSET_NAME: closde-${{ matrix.goos }}-${{ matrix.asset_arch }}
+          BUILD_DIR: dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}
+          PACKAGE_DIR: dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}/closde-${{ matrix.goos }}-${{ matrix.asset_arch }}
+
+      - name: Upload binary archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.goos }}-${{ matrix.asset_arch }}
+          path: dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}/closde-${{ matrix.goos }}-${{ matrix.asset_arch }}.zip
+          if-no-files-found: error
+
+  build-preload:
+    name: Build preload asset
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build preload asset
+        run: npm run build:preload
+
+      - name: Upload preload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preload
+          path: dist/preload.js
+          if-no-files-found: error
+
+  publish-release-assets:
+    name: Upload assets to release
+    runs-on: ubuntu-latest
+    needs:
+      - build-binaries
+      - build-preload
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/publish
+          merge-multiple: true
+
+      - name: Upload assets to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/publish/closde-*.zip
+            dist/publish/preload.js

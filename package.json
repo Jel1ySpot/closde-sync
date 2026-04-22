@@ -1,0 +1,24 @@
+{
+  "name": "closde-sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "closde sync workspace",
+  "scripts": {
+    "build": "npm run build:preload && npm run build:cmd",
+    "build:cmd": "go run ./internal/build",
+    "build:preload": "esbuild preload/main.ts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/preload.js",
+    "check": "npm run check:preload && go test ./...",
+    "check:preload": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "module",
+  "dependencies": {
+    "loglevel": "^1.9.2",
+    "proxy-agent": "^8.0.1",
+    "undici": "^7.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.2"
+  }
+}
