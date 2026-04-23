@@ -9,7 +9,14 @@
 - Runs in **server mode** when the executable filename contains `server`.
 - Injects a preload bundle into the Claude CLI process.
 - Optionally starts an in-process Xray proxy from `CLOSDE_PROXY` instead of using an external Xray binary.
-- Supports `DEBUG_MODE` for Go, preload, and Xray debug logging.
+
+## Usage
+
+1. Download the `closde` binary and `preload.js` for your platform from [Release](https://github.com/Jel1ySpot/closde-sync/releases/latest).
+2. Create `.closed` folder in home directory.
+3. Move `preload.js` into `.closde`.
+4. Create `.env` file in `.closde`, edit it according to [this instructions](#client-environment) in the README.
+5. Move the binary to directory like `~/.loacl/bin` or `/usr/local/bin`, and use it.
 
 ## Project layout
 
@@ -46,11 +53,6 @@ Build everything:
 npm run build
 ```
 
-This does two things:
-
-- bundles `preload/main.ts` to `dist/preload.js`
-- builds the Go binary to `build/closde` or `build/closde.exe`
-
 Useful scripts:
 
 ```bash
@@ -62,13 +64,6 @@ npm run check         # TypeScript check + go test ./...
 
 ## Client
 
-Example:
-
-```bash
-./closde --help
-./closde -p "hello"
-```
-
 ### Client environment
 
 `closde` loads `~/.closde/.env` automatically. If the file does not exist, it is created and the first run exits so you can fill in the required values.
@@ -77,12 +72,21 @@ Example:
 CLOSDE_CLAUDE_VERSION=<installed-claude-version>
 ```
 
-### Preload resolution
+Support environment flags:
 
-At startup the client resolves the preload in this order:
-
-1. `CLOSDE_PRELOAD_FILE`
-2. `~/.closde/preload.js`
+| Name | Required | Default | Describe |
+| --- | --- | --- | --- |
+| `CLOSDE_CLAUDE_VERSION` | Y | / | The version of Claude code to use. |
+| `CLOSDE_PROXY` | N | / | The proxy URI provided to Xray to drive claude. |
+| `CLOSDE_SERVER_URL` | N | / | Closde server URL. |
+| `CLOSDE_AUTH_TOKEN` | N | / | The token used to connect to the Cloude server. |
+| `HTTPS_PROXY` | N | / | The HTTPS proxy URL provided to claude. |
+| `HTTP_PROXY` | N | / | The HTTP proxy URL provided to claude. |
+| `CLOSDE_PLATFORM` | N | / | Platform name injected into `process.platform` |
+| `CLOSDE_ARCH` | N | / | Arch information injected into `process.arch` |
+| `CLOSDE_NODE_VERSION` | N | / | NodeJS version injected into `process.version`. |
+| `CLOSDE_CLAUDE_SETTINGS` | N | `$HOME/.claude.json` | `.claude.json` file path. |
+| `CLOSDE_CLAUDE_CREDENTIALS` | N | `$HOME/.claude/.credentials.json` | `.credentials.json` file path. |
 
 ## Server
 
@@ -128,46 +132,6 @@ Defaults:
 If `CLOSDE_PROXY` is set, the client starts an embedded Xray instance and points Node traffic to the local HTTP proxy.
 
 Supported proxy URI styles are implemented under `internal/xray/`.
-
-## Logging and `DEBUG_MODE`
-
-Logging is controlled by the environment variable `DEBUG_MODE`.
-
-Debug mode is enabled only when `DEBUG_MODE` is one of:
-
-- `1`
-- `true`
-- `yes`
-- `on`
-- `debug`
-
-Anything else, including `0`, an empty string, or an unset variable, is treated as non-debug mode.
-
-Examples:
-
-```bash
-DEBUG_MODE=1 ./build/closde
-DEBUG_MODE=0 ./build/closde
-```
-
-Behavior:
-
-- **default / non-debug**
-  - Go logger runs at `info`
-  - preload keeps only important `info` logs
-  - Xray log level is `none`
-- **debug mode**
-  - Go logger runs at `debug`
-  - preload debug logs are enabled
-  - Xray log level is `debug`
-
-## Development notes
-
-- The root binary entrypoint is `main.go`.
-- Client orchestration lives in `internal/cli/`.
-- Runtime environment and preload handling live in `internal/runtime/`.
-- Embedded Xray config builders live in `internal/xray/`.
-- Server implementation lives in `server/`.
 
 ## Verification
 
