@@ -18,11 +18,7 @@ func ResolvePreloadFile(dataDir string, appVersion string) (string, error) {
 		return "", fmt.Errorf("CLOSDE_PRELOAD_FILE does not exist: %s", explicit)
 	}
 
-	fileVersion, err := normalizePreloadFileVersion(appVersion)
-	if err != nil {
-		return "", err
-	}
-	target := filepath.Join(dataDir, fmt.Sprintf("preload_v%s.js", fileVersion))
+	target := filepath.Join(dataDir, fmt.Sprintf("preload_%s.js", appVersion))
 
 	if FileExists(target) {
 		return target, nil
@@ -36,9 +32,9 @@ func ResolvePreloadFile(dataDir string, appVersion string) (string, error) {
 }
 
 func DownloadPreloadFile(targetPath string, appVersion string) error {
-	version, err := normalizeReleaseTag(appVersion)
-	if err != nil {
-		return err
+	version := strings.TrimSpace(appVersion)
+	if version == "" {
+		return fmt.Errorf("current CLI version is empty")
 	}
 
 	downloadURL := fmt.Sprintf("https://github.com/Jel1ySpot/closde-sync/releases/download/%s/preload.js", version)
@@ -68,25 +64,6 @@ func DownloadPreloadFile(targetPath string, appVersion string) error {
 	}
 
 	return nil
-}
-
-func normalizeReleaseTag(appVersion string) (string, error) {
-	version := strings.TrimSpace(appVersion)
-	if version == "" {
-		return "", fmt.Errorf("current CLI version is empty")
-	}
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
-	}
-	return version, nil
-}
-
-func normalizePreloadFileVersion(appVersion string) (string, error) {
-	version := strings.TrimSpace(appVersion)
-	if version == "" {
-		return "", fmt.Errorf("current CLI version is empty")
-	}
-	return strings.TrimPrefix(version, "v"), nil
 }
 
 func dedupePaths(paths []string) []string {
