@@ -18,7 +18,7 @@ func ResolvePreloadFile(dataDir string, appVersion string) (string, error) {
 		return "", fmt.Errorf("CLOSDE_PRELOAD_FILE does not exist: %s", explicit)
 	}
 
-	target := filepath.Join(dataDir, "preload.js")
+	target := filepath.Join(dataDir, fmt.Sprintf("preload_%s.js", appVersion))
 
 	if FileExists(target) {
 		return target, nil
