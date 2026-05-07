@@ -3,13 +3,18 @@ package runtime
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
 )
+
+const claudePackageRegistryURL = "https://registry.npmjs.org/@anthropic-ai/claude-code"
 
 func EnsureClaudeCode(cfg Config) error {
 	if FileExists(cfg.ClaudeCLIPath) {
@@ -47,6 +52,33 @@ func EnsureClaudeCode(cfg Config) error {
 	}
 
 	return CopyDir(extractedPackagePath, cfg.ClaudeRootPath)
+}
+
+func FetchLatestClaudeCodeVersion() (string, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Get(claudePackageRegistryURL)
+	if err != nil {
+		return "", fmt.Errorf("query Claude Code registry metadata: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("query Claude Code registry metadata: unexpected status %s", response.Status)
+	}
+
+	var payload struct {
+		DistTags map[string]string `json:"dist-tags"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return "", fmt.Errorf("decode Claude Code registry metadata: %w", err)
+	}
+
+	latestVersion := strings.TrimSpace(payload.DistTags["latest"])
+	if latestVersion == "" {
+		return "", fmt.Errorf("missing latest dist-tag in Claude Code registry metadata")
+	}
+
+	return latestVersion, nil
 }
 
 func extractTarGz(reader io.Reader, targetDir string) error {

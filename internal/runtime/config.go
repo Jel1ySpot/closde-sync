@@ -15,6 +15,7 @@ const (
 
 type Config struct {
 	DataDir        string
+	AppVersion     string
 	ClaudeVersion  string
 	ProxyURI       string
 	ProxyHost      string
@@ -24,7 +25,7 @@ type Config struct {
 	ClaudeRootPath string
 }
 
-func LoadConfig() (Config, error) {
+func LoadConfig(appVersion string) (Config, error) {
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
 		return Config{}, err
@@ -45,19 +46,23 @@ func LoadConfig() (Config, error) {
 
 	claudeVersion := strings.TrimSpace(os.Getenv("CLOSDE_CLAUDE_VERSION"))
 	if claudeVersion == "" {
-		return Config{}, errors.New("CLOSDE_CLAUDE_VERSION is not set")
+		resolvedVersion, resolveErr := FetchLatestClaudeCodeVersion()
+		if resolveErr != nil {
+			return Config{}, fmt.Errorf("CLOSDE_CLAUDE_VERSION is not set and failed to resolve latest Claude Code version: %w", resolveErr)
+		}
+		claudeVersion = resolvedVersion
 	}
 
 	claudeRootPath := filepath.Join(dataDir, "claude", claudeVersion)
 
-	preloadJSPath := filepath.Join(dataDir, "preload.js")
-
-	if !FileExists(preloadJSPath) {
-		return Config{}, errors.New("unable to locate dist/preload.js; build preload first or set CLOSDE_PRELOAD_FILE")
+	preloadJSPath, err := ResolvePreloadFile(dataDir, appVersion)
+	if err != nil {
+		return Config{}, err
 	}
 
 	return Config{
 		DataDir:        dataDir,
+		AppVersion:     appVersion,
 		ClaudeVersion:  claudeVersion,
 		ProxyURI:       strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
 		ProxyHost:      DefaultProxyHost,
@@ -88,7 +93,7 @@ func ensureEnvFile(filePath string) error {
 		if writeErr := os.WriteFile(filePath, []byte(""), 0o644); writeErr != nil {
 			return fmt.Errorf("create %s: %w", filePath, writeErr)
 		}
-		return fmt.Errorf("created %s; set CLOSDE_CLAUDE_VERSION before running closde", filePath)
+		return fmt.Errorf("created %s; optionally set CLOSDE_CLAUDE_VERSION to pin a version", filePath)
 	} else if err != nil {
 		return err
 	}
