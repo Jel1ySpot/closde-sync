@@ -28,9 +28,9 @@ Modes:
 
 Environment:
   ~/.closde/.env is loaded automatically when present.
-  Required: CLOSDE_CLAUDE_VERSION
-  Optional: CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
+  Optional: CLOSDE_CLAUDE_VERSION, CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
 `
+var AppVersion = "dev"
 
 func Run(argv []string) error {
 	if len(argv) == 0 {
@@ -65,7 +65,7 @@ func runServerMode(args []string) error {
 }
 
 func runClientMode(args []string) error {
-	cfg, err := closderuntime.LoadConfig()
+	cfg, err := closderuntime.LoadConfig(AppVersion)
 	if err != nil {
 		return err
 	}
