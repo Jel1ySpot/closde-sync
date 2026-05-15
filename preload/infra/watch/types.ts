@@ -1,4 +1,4 @@
 export type FileChangeEvent = {
-  absolutePath: string;
-  eventType: string;
+    absolutePath: string;
+    eventType: string;
 };

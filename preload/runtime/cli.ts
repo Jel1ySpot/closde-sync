@@ -26,55 +26,55 @@ Flags:
 `;
 
 export function loadConfig(args: CliArgs): ClientConfig {
-  const serverUrl = stringValue(args['server-url']) ?? process.env.CLOSDE_SERVER_URL ?? '';
-  const authToken = stringValue(args['auth-token']) ?? process.env.CLOSDE_AUTH_TOKEN ?? '';
-  const proxyUrl = stringValue(args['proxy-url']) ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY ?? "";
-  const platform = stringValue(args.platform) ?? process.env.CLOSDE_PLATFORM ?? process.platform;
-  const arch = stringValue(args.arch) ?? process.env.CLOSDE_ARCH ?? process.arch;
-  const nodeVersion = stringValue(args['node-version']) ?? process.env.CLOSDE_NODE_VERSION ?? process.version;
-  const claudeSettingsPath = expandConfigPath(
-    stringValue(args['claude-settings']) ?? process.env.CLOSDE_CLAUDE_SETTINGS ?? DEFAULT_CLAUDE_SETTINGS,
-  );
-  const claudeCredentialsPath = expandConfigPath(
-    stringValue(args['claude-credentials']) ?? process.env.CLOSDE_CLAUDE_CREDENTIALS ?? DEFAULT_CLAUDE_CREDENTIALS,
-  );
+    const serverUrl = stringValue(args['server-url']) ?? process.env.CLOSDE_SERVER_URL ?? '';
+    const authToken = stringValue(args['auth-token']) ?? process.env.CLOSDE_AUTH_TOKEN ?? '';
+    const proxyUrl = stringValue(args['proxy-url']) ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY ?? "";
+    const platform = stringValue(args.platform) ?? process.env.CLOSDE_PLATFORM ?? process.platform;
+    const arch = stringValue(args.arch) ?? process.env.CLOSDE_ARCH ?? process.arch;
+    const nodeVersion = stringValue(args['node-version']) ?? process.env.CLOSDE_NODE_VERSION ?? process.version;
+    const claudeSettingsPath = expandConfigPath(
+        stringValue(args['claude-settings']) ?? process.env.CLOSDE_CLAUDE_SETTINGS ?? DEFAULT_CLAUDE_SETTINGS,
+    );
+    const claudeCredentialsPath = expandConfigPath(
+        stringValue(args['claude-credentials']) ?? process.env.CLOSDE_CLAUDE_CREDENTIALS ?? DEFAULT_CLAUDE_CREDENTIALS,
+    );
 
-  return {
-    serverUrl,
-    authToken,
-    proxyUrl,
-    platform,
-    arch,
-    nodeVersion,
-    claudeSettingsPath,
-    claudeCredentialsPath,
-  };
+    return {
+        serverUrl,
+        authToken,
+        proxyUrl,
+        platform,
+        arch,
+        nodeVersion,
+        claudeSettingsPath,
+        claudeCredentialsPath,
+    };
 }
 
 export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = {};
+    const args: CliArgs = {};
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const item = argv[index];
-    if (!item.startsWith('--')) {
-      continue;
+    for (let index = 0; index < argv.length; index += 1) {
+        const item = argv[index];
+        if (!item.startsWith('--')) {
+            continue;
+        }
+
+        const [rawKey, inlineValue] = item.slice(2).split('=', 2);
+        if (inlineValue !== undefined) {
+            args[rawKey] = inlineValue;
+            continue;
+        }
+
+        const nextItem = argv[index + 1];
+        if (!nextItem || nextItem.startsWith('--')) {
+            args[rawKey] = true;
+            continue;
+        }
+
+        args[rawKey] = nextItem;
+        index += 1;
     }
 
-    const [rawKey, inlineValue] = item.slice(2).split('=', 2);
-    if (inlineValue !== undefined) {
-      args[rawKey] = inlineValue;
-      continue;
-    }
-
-    const nextItem = argv[index + 1];
-    if (!nextItem || nextItem.startsWith('--')) {
-      args[rawKey] = true;
-      continue;
-    }
-
-    args[rawKey] = nextItem;
-    index += 1;
-  }
-
-  return args;
+    return args;
 }

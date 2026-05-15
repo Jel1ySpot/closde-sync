@@ -7,52 +7,52 @@ import { formatError } from './infra/shared/common.ts';
 import { logger } from './infra/shared/logger.ts';
 
 async function main(): Promise<void> {
-  delete process.env.NODE_OPTIONS;
-  const args = parseArgs(process.argv.slice(2));
+    delete process.env.NODE_OPTIONS;
+    const args = parseArgs(process.argv.slice(2));
 
-  if (args.help) {
-    process.stdout.write(HELP_TEXT);
-    return;
-  }
-
-  try {
-    logger.info('[closde] preload starting');
-
-    const config = loadConfig(args);
-    installProcessInjection({
-      platform: config.platform,
-      arch: config.arch,
-      nodeVersion: config.nodeVersion,
-    });
-
-    if (config.proxyUrl) {
-      installProxyInjection(config.proxyUrl);
+    if (args.help) {
+        process.stdout.write(HELP_TEXT);
+        return;
     }
 
-    if (config.serverUrl) {
-      const client = new ClosdeClient(config);
-      await client.start();
+    try {
+        logger.info('[closde] preload starting');
+
+        const config = loadConfig(args);
+        installProcessInjection({
+            platform: config.platform,
+            arch: config.arch,
+            nodeVersion: config.nodeVersion,
+        });
+
+        if (config.proxyUrl) {
+            installProxyInjection(config.proxyUrl);
+        }
+
+        if (config.serverUrl) {
+            const client = new ClosdeClient(config);
+            await client.start();
+        }
+    } catch (error) {
+        handleFatal(error);
     }
-  } catch (error) {
-    handleFatal(error);
-  }
 }
 
 const originalRunMain = Module.runMain;
 let preloadStarted = false;
 
 Module.runMain = function runMainWithClosdePreload(...args: Parameters<typeof originalRunMain>) {
-  if (preloadStarted) {
-    return originalRunMain.apply(this, args);
-  }
+    if (preloadStarted) {
+        return originalRunMain.apply(this, args);
+    }
 
-  preloadStarted = true;
-  void main().then(() => {
-    originalRunMain.apply(this, args);
-  });
+    preloadStarted = true;
+    void main().then(() => {
+        originalRunMain.apply(this, args);
+    });
 };
 
 function handleFatal(error: unknown): never {
-  logger.debug(`[closde] fatal: ${formatError(error)}`);
-  process.exit(1);
+    logger.debug(`[closde] fatal: ${formatError(error)}`);
+    process.exit(1);
 }
