@@ -7,6 +7,7 @@ import { formatError } from './infra/shared/common.ts';
 import { logger } from './infra/shared/logger.ts';
 
 async function main(): Promise<void> {
+  delete process.env.NODE_OPTIONS;
   const args = parseArgs(process.argv.slice(2));
 
   if (args.help) {
