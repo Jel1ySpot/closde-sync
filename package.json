@@ -8,7 +8,8 @@
     "build:cmd": "go run ./internal/build",
     "build:preload": "esbuild preload/main.ts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/preload.js",
     "check": "npm run check:preload && go test ./...",
-    "check:preload": "tsc --noEmit -p tsconfig.json"
+    "check:preload": "tsc --noEmit -p tsconfig.json",
+    "fmt": "find preload -name '*.ts' -print0 | xargs -0 tsfmt -r --useTsconfig tsconfig.json"
   },
   "type": "module",
   "dependencies": {
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "esbuild": "^0.28.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "typescript-formatter": "^7.2.2"
   }
 }
