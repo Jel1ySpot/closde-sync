@@ -14,15 +14,16 @@ const (
 )
 
 type Config struct {
-	DataDir        string
-	AppVersion     string
-	ClaudeVersion  string
-	ProxyURI       string
-	ProxyHost      string
-	ProxyPort      int
-	PreloadJSPath  string
-	ClaudeCLIPath  string
-	ClaudeRootPath string
+	DataDir          string
+	AppVersion       string
+	ClaudeVersion    string
+	ClaudeNpmPackage string
+	ProxyURI         string
+	ProxyHost        string
+	ProxyPort        int
+	PreloadJSPath    string
+	ClaudeCLIPath    string
+	ClaudeRootPath   string
 }
 
 func LoadConfig(appVersion string) (Config, error) {
@@ -44,16 +45,16 @@ func LoadConfig(appVersion string) (Config, error) {
 		return Config{}, err
 	}
 
-	claudeVersion := strings.TrimSpace(os.Getenv("CLOSDE_CLAUDE_VERSION"))
+	pkg, claudeVersion := ResolveClaudePackage(os.Getenv("CLOSDE_CLAUDE_VERSION"))
 	if claudeVersion == "" {
-		resolvedVersion, resolveErr := FetchLatestClaudeCodeVersion()
+		resolvedVersion, resolveErr := FetchLatestNpmVersion(pkg.NpmName)
 		if resolveErr != nil {
-			return Config{}, fmt.Errorf("CLOSDE_CLAUDE_VERSION is not set and failed to resolve latest Claude Code version: %w", resolveErr)
+			return Config{}, fmt.Errorf("CLOSDE_CLAUDE_VERSION not pinned and failed to resolve latest %s version: %w", pkg.NpmName, resolveErr)
 		}
 		claudeVersion = resolvedVersion
 	}
 
-	claudeRootPath := filepath.Join(dataDir, "claude", claudeVersion)
+	claudeRootPath := filepath.Join(dataDir, pkg.InstallDir, claudeVersion)
 
 	preloadJSPath, err := ResolvePreloadFile(dataDir, appVersion)
 	if err != nil {
@@ -61,15 +62,16 @@ func LoadConfig(appVersion string) (Config, error) {
 	}
 
 	return Config{
-		DataDir:        dataDir,
-		AppVersion:     appVersion,
-		ClaudeVersion:  claudeVersion,
-		ProxyURI:       strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
-		ProxyHost:      DefaultProxyHost,
-		ProxyPort:      DefaultProxyPort,
-		PreloadJSPath:  preloadJSPath,
-		ClaudeCLIPath:  filepath.Join(claudeRootPath, "cli.js"),
-		ClaudeRootPath: claudeRootPath,
+		DataDir:          dataDir,
+		AppVersion:       appVersion,
+		ClaudeVersion:    claudeVersion,
+		ClaudeNpmPackage: pkg.NpmName,
+		ProxyURI:         strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
+		ProxyHost:        DefaultProxyHost,
+		ProxyPort:        DefaultProxyPort,
+		PreloadJSPath:    preloadJSPath,
+		ClaudeCLIPath:    filepath.Join(claudeRootPath, pkg.CLIPath),
+		ClaudeRootPath:   claudeRootPath,
 	}, nil
 }
 

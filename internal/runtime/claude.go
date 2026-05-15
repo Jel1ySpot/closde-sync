@@ -14,7 +14,41 @@ import (
 	"time"
 )
 
-const claudePackageRegistryURL = "https://registry.npmjs.org/@anthropic-ai/claude-code"
+type claudePackage struct {
+	NpmName    string
+	InstallDir string
+	CLIPath    string
+}
+
+var (
+	packageCC  = claudePackage{NpmName: "@anthropic-ai/claude-code", InstallDir: "claude", CLIPath: "cli.js"}
+	packageCCB = claudePackage{NpmName: "claude-code-best", InstallDir: "claude-code-best", CLIPath: "dist/cli.js"}
+)
+
+// ResolveClaudePackage parses CLOSDE_CLAUDE_VERSION into a package and an
+// optional pinned version (empty means "latest"). Accepted forms:
+//
+//	""            -> claude-code, latest
+//	"cc"          -> claude-code, latest
+//	"cc:<v>"      -> claude-code, version <v>
+//	"ccb"         -> claude-code-best, latest
+//	"ccb:<v>"     -> claude-code-best, version <v>
+//	"<v>"         -> claude-code, version <v>   (backward compatibility)
+func ResolveClaudePackage(raw string) (claudePackage, string) {
+	raw = strings.TrimSpace(raw)
+	switch {
+	case raw == "" || raw == "cc":
+		return packageCC, ""
+	case raw == "ccb":
+		return packageCCB, ""
+	case strings.HasPrefix(raw, "cc:"):
+		return packageCC, strings.TrimPrefix(raw, "cc:")
+	case strings.HasPrefix(raw, "ccb:"):
+		return packageCCB, strings.TrimPrefix(raw, "ccb:")
+	default:
+		return packageCC, raw
+	}
+}
 
 func EnsureClaudeCode(cfg Config) error {
 	if FileExists(cfg.ClaudeCLIPath) {
@@ -25,15 +59,15 @@ func EnsureClaudeCode(cfg Config) error {
 		return err
 	}
 
-	archiveURL := fmt.Sprintf("https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-%s.tgz", cfg.ClaudeVersion)
+	archiveURL := packageTarballURL(cfg.ClaudeNpmPackage, cfg.ClaudeVersion)
 	response, err := http.Get(archiveURL)
 	if err != nil {
-		return fmt.Errorf("download Claude Code %s: %w", cfg.ClaudeVersion, err)
+		return fmt.Errorf("download %s %s: %w", cfg.ClaudeNpmPackage, cfg.ClaudeVersion, err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("download Claude Code %s: unexpected status %s", cfg.ClaudeVersion, response.Status)
+		return fmt.Errorf("download %s %s: unexpected status %s", cfg.ClaudeNpmPackage, cfg.ClaudeVersion, response.Status)
 	}
 
 	tempDir, err := os.MkdirTemp("", "closde-claude-")
@@ -48,37 +82,45 @@ func EnsureClaudeCode(cfg Config) error {
 
 	extractedPackagePath := filepath.Join(tempDir, "package")
 	if !DirExists(extractedPackagePath) {
-		return fmt.Errorf("download Claude Code %s: extracted package directory missing", cfg.ClaudeVersion)
+		return fmt.Errorf("download %s %s: extracted package directory missing", cfg.ClaudeNpmPackage, cfg.ClaudeVersion)
 	}
 
 	return CopyDir(extractedPackagePath, cfg.ClaudeRootPath)
 }
 
-func FetchLatestClaudeCodeVersion() (string, error) {
+func FetchLatestNpmVersion(npmPackage string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	response, err := client.Get(claudePackageRegistryURL)
+	response, err := client.Get("https://registry.npmjs.org/" + npmPackage)
 	if err != nil {
-		return "", fmt.Errorf("query Claude Code registry metadata: %w", err)
+		return "", fmt.Errorf("query %s registry metadata: %w", npmPackage, err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("query Claude Code registry metadata: unexpected status %s", response.Status)
+		return "", fmt.Errorf("query %s registry metadata: unexpected status %s", npmPackage, response.Status)
 	}
 
 	var payload struct {
 		DistTags map[string]string `json:"dist-tags"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
-		return "", fmt.Errorf("decode Claude Code registry metadata: %w", err)
+		return "", fmt.Errorf("decode %s registry metadata: %w", npmPackage, err)
 	}
 
 	latestVersion := strings.TrimSpace(payload.DistTags["latest"])
 	if latestVersion == "" {
-		return "", fmt.Errorf("missing latest dist-tag in Claude Code registry metadata")
+		return "", fmt.Errorf("missing latest dist-tag for %s", npmPackage)
 	}
 
 	return latestVersion, nil
+}
+
+func packageTarballURL(npmPackage, version string) string {
+	base := npmPackage
+	if idx := strings.LastIndex(base, "/"); idx >= 0 {
+		base = base[idx+1:]
+	}
+	return fmt.Sprintf("https://registry.npmjs.org/%s/-/%s-%s.tgz", npmPackage, base, version)
 }
 
 func extractTarGz(reader io.Reader, targetDir string) error {
