@@ -30,7 +30,7 @@ Environment:
   ~/.closde/.env is loaded automatically when present.
   Optional: CLOSDE_CLAUDE_VERSION, CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
 `
-var AppVersion = "dev"
+var AppVersion = "0.1.0"
 
 func Run(argv []string) error {
 	if len(argv) == 0 {

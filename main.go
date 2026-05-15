@@ -7,7 +7,7 @@ import (
 	closdelog "closde-sync/internal/logging"
 )
 
-var Version = "dev"
+var Version = "0.1.0"
 
 func main() {
 	closdelog.ConfigureFromEnv()
