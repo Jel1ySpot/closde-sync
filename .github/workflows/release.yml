@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -88,7 +88,7 @@ jobs:
           PACKAGE_DIR: dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}/closde-${{ matrix.goos }}-${{ matrix.asset_arch }}
 
       - name: Upload binary archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.goos }}-${{ matrix.asset_arch }}
           path: dist/release/${{ matrix.goos }}-${{ matrix.asset_arch }}/closde-${{ matrix.goos }}-${{ matrix.asset_arch }}.zip
@@ -100,15 +100,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -120,7 +120,7 @@ jobs:
         run: pnpm build:preload
 
       - name: Upload preload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: preload
           path: dist/preload.js
@@ -136,7 +136,7 @@ jobs:
 
     steps:
       - name: Download workflow artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist/publish
           merge-multiple: true
