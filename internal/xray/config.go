@@ -2,7 +2,10 @@ package xray
 
 import (
 	"encoding/json"
-	"strings"
+	"fmt"
+	"net/url"
+
+	xrayknife "github.com/lilendian0x00/xray-knife/v9/pkg/core/xray"
 )
 
 const outboundTag = "proxy"
@@ -41,17 +44,54 @@ func buildConfigDocument(proxyURI string, listenHost string, listenPort int, deb
 }
 
 func buildOutbound(proxyURI string) (map[string]any, error) {
-	switch {
-	case strings.HasPrefix(proxyURI, "vmess://"):
-		return buildVMessOutbound(proxyURI)
-	case strings.HasPrefix(proxyURI, "ss://"):
-		return buildShadowsocksOutbound(proxyURI)
+	normalized, err := normalizeProxyURI(proxyURI)
+	if err != nil {
+		return nil, fmt.Errorf("normalize proxy URI: %w", err)
+	}
+
+	proto, err := createXrayProtocol(normalized)
+	if err != nil {
+		return nil, fmt.Errorf("parse proxy URI: %w", err)
+	}
+	if err := proto.Parse(); err != nil {
+		return nil, fmt.Errorf("parse proxy URI: %w", err)
+	}
+
+	outboundConf, err := proto.BuildOutboundDetourConfig(false)
+	if err != nil {
+		return nil, fmt.Errorf("build outbound: %w", err)
+	}
+
+	data, err := json.Marshal(outboundConf)
+	if err != nil {
+		return nil, fmt.Errorf("marshal outbound: %w", err)
+	}
+	var outbound map[string]any
+	if err := json.Unmarshal(data, &outbound); err != nil {
+		return nil, fmt.Errorf("decode outbound: %w", err)
+	}
+	outbound["tag"] = outboundTag
+	return outbound, nil
+}
+
+func createXrayProtocol(link string) (xrayknife.Protocol, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return nil, err
+	}
+	switch u.Scheme {
+	case "vmess":
+		return xrayknife.NewVmess(link), nil
+	case "vless":
+		return xrayknife.NewVless(link), nil
+	case "ss":
+		return xrayknife.NewShadowsocks(link), nil
+	case "trojan":
+		return xrayknife.NewTrojan(link), nil
+	case "socks":
+		return xrayknife.NewSocks(link), nil
 	default:
-		parsed, err := parseProxyURL(proxyURI)
-		if err != nil {
-			return nil, err
-		}
-		return buildURLBasedOutbound(parsed)
+		return nil, fmt.Errorf("unsupported proxy scheme: %s", u.Scheme)
 	}
 }
 
