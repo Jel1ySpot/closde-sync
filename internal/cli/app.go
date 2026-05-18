@@ -24,13 +24,14 @@ Usage:
 
 Modes:
   Binary names containing "server" run in server mode.
-  Other binary names run in client mode and forward all args to Node.
+  Other binary names run in client mode and forward all args to Claude.
 
 Environment:
   ~/.closde/.env is loaded automatically when present.
   Optional: CLOSDE_CLAUDE_VERSION, CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
 `
-var AppVersion = "0.1.0"
+
+var AppVersion = "v0.1.1"
 
 func Run(argv []string) error {
 	if len(argv) == 0 {
@@ -73,8 +74,10 @@ func runClientMode(args []string) error {
 	closdelog.ConfigureFromEnv()
 	closdelog.With("cli").Debug("starting client mode", "binary", os.Args[0], "args", args)
 
-	if err := closderuntime.EnsureClaudeCode(cfg); err != nil {
-		return err
+	if !cfg.LocalClaude {
+		if err := closderuntime.EnsureClaudeCode(cfg); err != nil {
+			return err
+		}
 	}
 
 	var proxy *xray.Instance
@@ -88,15 +91,26 @@ func runClientMode(args []string) error {
 		}()
 	}
 
-	nodePath, err := exec.LookPath("node")
+	commandName := "node"
+	commandArgs := append([]string{cfg.ClaudeCLIPath}, args...)
+	logMessage := "launching node client"
+	if cfg.LocalClaude {
+		commandName = "claude"
+		commandArgs = args
+		logMessage = "launching local claude client"
+	}
+
+	commandPath, err := exec.LookPath(commandName)
 	if err != nil {
+		if cfg.LocalClaude {
+			return errors.New("claude is not installed or not available in PATH")
+		}
 		return errors.New("node is not installed or not available in PATH")
 	}
 
-	commandArgs := append([]string{cfg.ClaudeCLIPath}, args...)
-	closdelog.With("cli").Debug("launching node client", "node", nodePath, "args", commandArgs)
+	closdelog.With("cli").Debug(logMessage, "command", commandPath, "args", commandArgs)
 
-	command := exec.Command(nodePath, commandArgs...)
+	command := exec.Command(commandPath, commandArgs...)
 	command.Stdin = os.Stdin
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
