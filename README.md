@@ -37,7 +37,7 @@
 - npm
 - Go (Development)
 
-The client also expects a Claude Code installation managed under `~/.closde/claude/<version>`. If `CLOSDE_CLAUDE_VERSION` is unset, closde automatically resolves and downloads the latest Claude Code version from npm.
+The client expects either a Claude Code installation managed under `~/.closde/claude/<version>` or `CLOSDE_CLAUDE_VERSION=local` to use the system `claude` command. If `CLOSDE_CLAUDE_VERSION` is unset, closde automatically resolves and downloads the latest Claude Code version from npm.
 
 ## Build
 
@@ -69,14 +69,14 @@ npm run check         # TypeScript check + go test ./...
 `closde` loads `~/.closde/.env` automatically. If the file does not exist, it is created and the first run exits so you can fill in the required values.
 
 ```env
-CLOSDE_CLAUDE_VERSION=<installed-claude-version> # optional: set only when pinning
+CLOSDE_CLAUDE_VERSION=<installed-claude-version> # optional: set to local to use system claude
 ```
 
 Support environment flags:
 
 | Name | Required | Default | Describe |
 | --- | --- | --- | --- |
-| `CLOSDE_CLAUDE_VERSION` | N | / | Claude Code version to use. If omitted, the latest npm release is used. |
+| `CLOSDE_CLAUDE_VERSION` | N | / | Claude Code version to use. If set to `local`, the system `claude` command is used without injecting `NODE_OPTIONS`. If omitted, the latest npm release is used. |
 | `CLOSDE_PROXY` | N | / | The proxy URI provided to Xray to drive claude. |
 | `CLOSDE_SERVER_URL` | N | / | Closde server URL. |
 | `CLOSDE_AUTH_TOKEN` | N | / | The token used to connect to the Cloude server. |

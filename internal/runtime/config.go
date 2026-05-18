@@ -24,6 +24,7 @@ type Config struct {
 	PreloadJSPath    string
 	ClaudeCLIPath    string
 	ClaudeRootPath   string
+	LocalClaude      bool
 }
 
 func LoadConfig(appVersion string) (Config, error) {
@@ -45,7 +46,24 @@ func LoadConfig(appVersion string) (Config, error) {
 		return Config{}, err
 	}
 
-	pkg, claudeVersion := ResolveClaudePackage(os.Getenv("CLOSDE_CLAUDE_VERSION"))
+	rawClaudeVersion := strings.TrimSpace(os.Getenv("CLOSDE_CLAUDE_VERSION"))
+	if rawClaudeVersion == "local" {
+		return Config{
+			DataDir:          dataDir,
+			AppVersion:       appVersion,
+			ClaudeVersion:    "local",
+			ClaudeNpmPackage: "",
+			ProxyURI:         strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
+			ProxyHost:        DefaultProxyHost,
+			ProxyPort:        DefaultProxyPort,
+			PreloadJSPath:    "",
+			ClaudeCLIPath:    "claude",
+			ClaudeRootPath:   "",
+			LocalClaude:      true,
+		}, nil
+	}
+
+	pkg, claudeVersion := ResolveClaudePackage(rawClaudeVersion)
 	if claudeVersion == "" {
 		resolvedVersion, resolveErr := FetchLatestNpmVersion(pkg.NpmName)
 		if resolveErr != nil {
@@ -72,6 +90,7 @@ func LoadConfig(appVersion string) (Config, error) {
 		PreloadJSPath:    preloadJSPath,
 		ClaudeCLIPath:    filepath.Join(claudeRootPath, pkg.CLIPath),
 		ClaudeRootPath:   claudeRootPath,
+		LocalClaude:      false,
 	}, nil
 }
 
@@ -79,7 +98,9 @@ func PrepareCommandEnv(cfg Config, proxyEnabled bool) []string {
 	env := os.Environ()
 	setEnv(&env, "DISABLE_TELEMETRY", "1")
 	setEnv(&env, "NODE_USE_ENV_PROXY", "1")
-	setEnv(&env, "NODE_OPTIONS", mergeNodeOptions(os.Getenv("NODE_OPTIONS"), "--require "+cfg.PreloadJSPath))
+	if !cfg.LocalClaude {
+		setEnv(&env, "NODE_OPTIONS", mergeNodeOptions(os.Getenv("NODE_OPTIONS"), "--require "+cfg.PreloadJSPath))
+	}
 
 	if proxyEnabled {
 		proxyURL := fmt.Sprintf("http://%s:%d", cfg.ProxyHost, cfg.ProxyPort)
