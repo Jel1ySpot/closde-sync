@@ -37,7 +37,7 @@
 - npm
 - Go (Development)
 
-The client expects either a Claude Code installation managed under `~/.closde/claude/<version>` or `CLOSDE_CLAUDE_VERSION=local` to use the system `claude` command. If `CLOSDE_CLAUDE_VERSION` is unset, closde automatically resolves and downloads the latest Claude Code version from npm.
+The client expects either a Claude Code installation managed under `~/.closde/claude/<version>`, `CLOSDE_CLAUDE_VERSION=local` to use the system `claude` command, or `CLOSDE_CLAUDE_VERSION=file:<abs-path>` to run a specific binary. If `CLOSDE_CLAUDE_VERSION` is unset, closde automatically resolves and downloads the latest Claude Code version from npm.
 
 ## Build
 
@@ -76,8 +76,8 @@ Support environment flags:
 
 | Name | Required | Default | Describe |
 | --- | --- | --- | --- |
-| `CLOSDE_CLAUDE_VERSION` | N | / | Claude Code version to use. If set to `local`, the system `claude` command is used without injecting `NODE_OPTIONS`. If omitted, the latest npm release is used. |
-| `CLOSDE_PROXY` | N | / | The proxy URI provided to Xray to drive claude. |
+| `CLOSDE_CLAUDE_VERSION` | N | / | Claude Code version to use. `local` uses the system `claude` command, and `file:<abs-path>` runs a specific binary — both skip the npm download and `NODE_OPTIONS` injection. If omitted, the latest npm release is used. |
+| `CLOSDE_PROXY` | N | / | The proxy URI provided to Xray to drive claude. When set, Xray binds a local HTTP proxy starting at port 11808, shifting to the next free port if it is in use. |
 | `CLOSDE_SERVER_URL` | N | / | Closde server URL. |
 | `CLOSDE_AUTH_TOKEN` | N | / | The token used to connect to the Cloude server. |
 | `HTTPS_PROXY` | N | / | The HTTPS proxy URL provided to claude. |

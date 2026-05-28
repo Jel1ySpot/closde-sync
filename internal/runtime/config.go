@@ -48,19 +48,17 @@ func LoadConfig(appVersion string) (Config, error) {
 
 	rawClaudeVersion := strings.TrimSpace(os.Getenv("CLOSDE_CLAUDE_VERSION"))
 	if rawClaudeVersion == "local" {
-		return Config{
-			DataDir:          dataDir,
-			AppVersion:       appVersion,
-			ClaudeVersion:    "local",
-			ClaudeNpmPackage: "",
-			ProxyURI:         strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
-			ProxyHost:        DefaultProxyHost,
-			ProxyPort:        DefaultProxyPort,
-			PreloadJSPath:    "",
-			ClaudeCLIPath:    "claude",
-			ClaudeRootPath:   "",
-			LocalClaude:      true,
-		}, nil
+		return localClaudeConfig(dataDir, appVersion, "local", "claude"), nil
+	}
+	if strings.HasPrefix(rawClaudeVersion, "file:") {
+		binaryPath := strings.TrimSpace(strings.TrimPrefix(rawClaudeVersion, "file:"))
+		if binaryPath == "" {
+			return Config{}, errors.New("CLOSDE_CLAUDE_VERSION file: requires an absolute path, e.g. file:/usr/local/bin/claude")
+		}
+		if !filepath.IsAbs(binaryPath) {
+			return Config{}, fmt.Errorf("CLOSDE_CLAUDE_VERSION file: path must be absolute: %q", binaryPath)
+		}
+		return localClaudeConfig(dataDir, appVersion, rawClaudeVersion, binaryPath), nil
 	}
 
 	pkg, claudeVersion := ResolveClaudePackage(rawClaudeVersion)
@@ -92,6 +90,26 @@ func LoadConfig(appVersion string) (Config, error) {
 		ClaudeRootPath:   claudeRootPath,
 		LocalClaude:      false,
 	}, nil
+}
+
+// localClaudeConfig builds a Config that runs an already-present Claude binary
+// directly (no npm download, no preload injection). It backs both the "local"
+// protocol (cliPath "claude", resolved via PATH) and the "file:<AbsPath>"
+// protocol (cliPath an absolute binary path).
+func localClaudeConfig(dataDir, appVersion, claudeVersion, cliPath string) Config {
+	return Config{
+		DataDir:          dataDir,
+		AppVersion:       appVersion,
+		ClaudeVersion:    claudeVersion,
+		ClaudeNpmPackage: "",
+		ProxyURI:         strings.TrimSpace(os.Getenv("CLOSDE_PROXY")),
+		ProxyHost:        DefaultProxyHost,
+		ProxyPort:        DefaultProxyPort,
+		PreloadJSPath:    "",
+		ClaudeCLIPath:    cliPath,
+		ClaudeRootPath:   "",
+		LocalClaude:      true,
+	}
 }
 
 func PrepareCommandEnv(cfg Config, proxyEnabled bool) []string {

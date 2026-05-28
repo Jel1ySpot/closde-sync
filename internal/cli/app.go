@@ -31,7 +31,7 @@ Environment:
   Optional: CLOSDE_CLAUDE_VERSION, CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
 `
 
-var AppVersion = "v0.1.1"
+var AppVersion = "dev"
 
 func Run(argv []string) error {
 	if len(argv) == 0 {
@@ -82,10 +82,12 @@ func runClientMode(args []string) error {
 
 	var proxy *xray.Instance
 	if strings.TrimSpace(cfg.ProxyURI) != "" {
-		proxy, err = xray.StartProxy(cfg.ProxyURI, cfg.ProxyHost, cfg.ProxyPort, closdelog.IsDebugMode())
+		var listenPort int
+		proxy, listenPort, err = xray.StartProxy(cfg.ProxyURI, cfg.ProxyHost, cfg.ProxyPort, closdelog.IsDebugMode())
 		if err != nil {
 			return err
 		}
+		cfg.ProxyPort = listenPort
 		defer func() {
 			_ = proxy.Close()
 		}()
@@ -95,7 +97,7 @@ func runClientMode(args []string) error {
 	commandArgs := append([]string{cfg.ClaudeCLIPath}, args...)
 	logMessage := "launching node client"
 	if cfg.LocalClaude {
-		commandName = "claude"
+		commandName = cfg.ClaudeCLIPath
 		commandArgs = args
 		logMessage = "launching local claude client"
 	}
@@ -103,7 +105,7 @@ func runClientMode(args []string) error {
 	commandPath, err := exec.LookPath(commandName)
 	if err != nil {
 		if cfg.LocalClaude {
-			return errors.New("claude is not installed or not available in PATH")
+			return fmt.Errorf("claude binary %q is not available: %w", commandName, err)
 		}
 		return errors.New("node is not installed or not available in PATH")
 	}
