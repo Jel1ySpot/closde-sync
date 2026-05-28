@@ -31,7 +31,7 @@ Environment:
   Optional: CLOSDE_CLAUDE_VERSION, CLOSDE_PROXY, CLOSDE_PRELOAD_FILE, DEBUG_MODE
 `
 
-var AppVersion = "dev"
+var AppVersion = "v0.1.2"
 
 func Run(argv []string) error {
 	if len(argv) == 0 {
